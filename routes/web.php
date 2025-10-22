@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Dashboard\SubmitController;
 
 // صفحه خوش‌آمدگویی
 Route::get('/', function () {
@@ -22,8 +23,10 @@ Route::middleware([
 
     // صفحه لیست و جستجوی کاربران
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
-
-    // نمایش مشخصات یک کاربر
     Route::get('/user/{pid}', [UserController::class, 'show'])->name('users.show');
+
+    // === SUBMIT ROUTES (دقیق!) ===
+    Route::get('/submit', [SubmitController::class, 'index'])->name('dashboard.submit.index');
+    Route::post('/submit', [SubmitController::class, 'store'])->name('dashboard.submit.store');
 
 });
