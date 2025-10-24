@@ -19,7 +19,7 @@ class DownloadProfilePicture implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public string $queue = 'profile-media';
+    // public string $queue = 'profile-media';
 
     public $tries = 3;
 
@@ -27,134 +27,103 @@ class DownloadProfilePicture implements ShouldQueue
 
     public $timeout = 120;
 
-    public function __construct(public InstagramProfile $profile)
+
+    public $profile;
+
+    public function __construct(InstagramProfile $profile)
     {
+        $this->profile = $profile;
+
+        // ✅ به روش تمیز صف را ست کن
+        $this->onQueue('profile-media');
     }
 
-    public function handle(): void
-    {
-        $profile = $this->profile->fresh();
+public function handle(): void
+{
+    $username  = $this->profile->username;
+    $profileId = $this->profile->id;
+    $imageUrl  = $this->profile->profile_pic_url; // توجه کن نام فیلد درست باشه
+    $proxy     = 'socks5://127.0.0.1:10808';
 
-        if (!$profile) {
-            return;
-        }
+    logger()->info('Starting profile picture download', [
+        'profile_id' => $profileId,
+        'username'   => $username,
+        'url'        => $imageUrl,
+        'proxy'      => $proxy,
+    ]);
 
-        if (!$profile->profile_pic_url) {
-            $profile->forceFill([
-                'profile_pic_status' => 'skipped',
-                'profile_pic_progress' => 100,
-            ])->save();
-
-            return;
-        }
-
-        $disk = $profile->profile_pic_disk ?: 'public';
-        $existingPath = $profile->profile_pic;
-
-        if ($existingPath && Storage::disk($disk)->exists($existingPath)) {
-            $profile->forceFill([
-                'profile_pic_status' => 'completed',
-                'profile_pic_progress' => 100,
-                'profile_pic_error' => null,
-            ])->save();
-
-            return;
-        }
-
-        $profile->forceFill([
-            'profile_pic_status' => 'downloading',
-            'profile_pic_progress' => 10,
-            'profile_pic_error' => null,
-        ])->save();
-
-        Log::info('Starting profile picture download', [
-            'profile_id' => $profile->id,
-            'username' => $profile->username,
+    // 🧩 1. بررسی وجود URL
+    if (empty($imageUrl) || !filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+        logger()->warning('Profile picture URL is missing or invalid', [
+            'profile_id' => $profileId,
+            'username'   => $username,
         ]);
 
-        $temporaryFile = tempnam(sys_get_temp_dir(), 'insta_pic_');
+        $this->profile->forceFill([
+            'profile_pic_status'  => 'skipped',
+            'profile_pic_progress' => 100,
+            'profile_pic_error'   => 'Invalid or missing profile_pic_url',
+        ])->save();
 
-        try {
-            $httpOptions = ['stream' => true];
-
-            if ($proxy = config('services.instagram.profile_proxy')) {
-                $httpOptions['proxy'] = $proxy;
-            }
-
-            Http::timeout(45)
-                ->withOptions($httpOptions)
-                ->sink($temporaryFile)
-                ->get($profile->profile_pic_url)
-                ->throw();
-
-            $profile->forceFill([
-                'profile_pic_status' => 'processing',
-                'profile_pic_progress' => 65,
-            ])->save();
-
-            $extension = strtolower(pathinfo(parse_url($profile->profile_pic_url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION) ?: 'jpg');
-            $hashSeed = implode('|', [
-                $profile->id,
-                $profile->username,
-                (string) $profile->profile_pic_url,
-                microtime(true),
-            ]);
-            $filename = Str::of(hash('sha256', $hashSeed))->substr(0, 48).'.'.$extension;
-            $storagePath = 'instagram/'.$filename;
-
-            $stream = fopen($temporaryFile, 'rb');
-
-            if (!is_resource($stream)) {
-                throw new RuntimeException('Unable to open downloaded profile picture for streaming.');
-            }
-
-            rewind($stream);
-
-            $stored = Storage::disk($disk)->put($storagePath, $stream);
-
-            fclose($stream);
-
-            if (!$stored) {
-                throw new RuntimeException('Failed to persist downloaded profile picture to storage.');
-            }
-
-            $profile->forceFill([
-                'profile_pic' => $storagePath,
-                'profile_pic_disk' => $disk,
-                'profile_pic_status' => 'completed',
-                'profile_pic_progress' => 100,
-                'profile_pic_downloaded_at' => now(),
-                'profile_pic_error' => null,
-            ])->save();
-            
-            Log::info('Profile picture downloaded and stored', [
-                'profile_id' => $profile->id,
-                'username' => $profile->username,
-                'path' => $storagePath,
-                'disk' => $disk,
-                'proxy' => $proxy ?? null,
-            ]);
-        } catch (Throwable $exception) {
-            $profile->forceFill([
-                'profile_pic_status' => 'failed',
-                'profile_pic_progress' => 0,
-                'profile_pic_error' => $exception->getMessage(),
-            ])->save();
-
-            Log::error('Profile picture download failed', [
-                'profile_id' => $profile->id,
-                'username' => $profile->username,
-                'error' => $exception->getMessage(),
-                'proxy' => $proxy ?? null,
-            ]);
-
-            throw $exception;
-        } finally {
-            if (is_file($temporaryFile)) {
-                @unlink($temporaryFile);
-            }
-        }
+        return;
     }
+
+    try {
+        // 🧩 2. دانلود از طریق Proxy
+        $response = Http::withOptions([
+            'proxy'   => $proxy,
+            'timeout' => 25,
+            'verify'  => false,
+        ])->retry(2, 300)->get($imageUrl);
+
+        if ($response->failed()) {
+            throw new \Exception("HTTP request failed with status {$response->status()}");
+        }
+
+        $body = $response->body();
+        if (empty($body) || strlen($body) < 1024) {
+            throw new \Exception('Received invalid or empty image data');
+        }
+
+        // 🧩 3. ذخیره فایل با نام یکتا
+        $filename = sha1($profileId . microtime(true)) . '.jpg';
+        $path     = "instagram/{$filename}";
+
+        Storage::disk('public')->put($path, $body);
+
+        $this->profile->forceFill([
+            'profile_pic'            => $path,
+            'profile_pic_disk'       => 'public',
+            'profile_pic_status'     => 'completed',
+            'profile_pic_progress'   => 100,
+            'profile_pic_downloaded_at' => now(),
+            'profile_pic_error'      => null,
+        ])->save();
+
+        logger()->info('Profile picture downloaded and stored', [
+            'profile_id' => $profileId,
+            'username'   => $username,
+            'path'       => $path,
+            'proxy'      => $proxy,
+        ]);
+
+    } catch (\Throwable $e) {
+        logger()->error('Profile picture download failed', [
+            'profile_id' => $profileId,
+            'username'   => $username,
+            'url'        => $imageUrl,
+            'error'      => $e->getMessage(),
+        ]);
+
+        $this->profile->forceFill([
+            'profile_pic_status'   => 'failed',
+            'profile_pic_progress' => 0,
+            'profile_pic_error'    => $e->getMessage(),
+        ])->save();
+
+        throw $e; // اجازه بده Laravel retry کنه
+    }
+}
 
     public function failed(Throwable $exception): void
     {
