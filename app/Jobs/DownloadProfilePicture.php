@@ -75,8 +75,14 @@ class DownloadProfilePicture implements ShouldQueue
         $temporaryFile = tempnam(sys_get_temp_dir(), 'insta_pic_');
 
         try {
+            $httpOptions = ['stream' => true];
+
+            if ($proxy = config('services.instagram.profile_proxy')) {
+                $httpOptions['proxy'] = $proxy;
+            }
+
             Http::timeout(45)
-                ->withOptions(['stream' => true])
+                ->withOptions($httpOptions)
                 ->sink($temporaryFile)
                 ->get($profile->profile_pic_url)
                 ->throw();
@@ -126,6 +132,7 @@ class DownloadProfilePicture implements ShouldQueue
                 'username' => $profile->username,
                 'path' => $storagePath,
                 'disk' => $disk,
+                'proxy' => $proxy ?? null,
             ]);
         } catch (Throwable $exception) {
             $profile->forceFill([
@@ -138,6 +145,7 @@ class DownloadProfilePicture implements ShouldQueue
                 'profile_id' => $profile->id,
                 'username' => $profile->username,
                 'error' => $exception->getMessage(),
+                'proxy' => $proxy ?? null,
             ]);
 
             throw $exception;

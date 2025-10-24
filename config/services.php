@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'instagram' => [
+        'profile_proxy' => env('INSTAGRAM_PROFILE_PROXY', 'http://127.0.0.1:10808'),
+    ],
+
 ];
