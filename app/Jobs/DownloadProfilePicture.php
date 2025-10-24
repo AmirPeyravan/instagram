@@ -9,13 +9,17 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class DownloadProfilePicture implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public string $queue = 'profile-media';
 
     public $tries = 3;
 
@@ -25,7 +29,6 @@ class DownloadProfilePicture implements ShouldQueue
 
     public function __construct(public InstagramProfile $profile)
     {
-        $this->queue = 'profile-media';
     }
 
     public function handle(): void
@@ -64,6 +67,11 @@ class DownloadProfilePicture implements ShouldQueue
             'profile_pic_error' => null,
         ])->save();
 
+        Log::info('Starting profile picture download', [
+            'profile_id' => $profile->id,
+            'username' => $profile->username,
+        ]);
+
         $temporaryFile = tempnam(sys_get_temp_dir(), 'insta_pic_');
 
         try {
@@ -88,27 +96,49 @@ class DownloadProfilePicture implements ShouldQueue
             $filename = Str::of(hash('sha256', $hashSeed))->substr(0, 48).'.'.$extension;
             $storagePath = 'instagram/'.$filename;
 
-            $stream = fopen($temporaryFile, 'r');
+            $stream = fopen($temporaryFile, 'rb');
 
-            Storage::disk($disk)->put($storagePath, $stream);
+            if (!is_resource($stream)) {
+                throw new RuntimeException('Unable to open downloaded profile picture for streaming.');
+            }
 
-            if (is_resource($stream)) {
-                fclose($stream);
+            rewind($stream);
+
+            $stored = Storage::disk($disk)->put($storagePath, $stream);
+
+            fclose($stream);
+
+            if (!$stored) {
+                throw new RuntimeException('Failed to persist downloaded profile picture to storage.');
             }
 
             $profile->forceFill([
                 'profile_pic' => $storagePath,
+                'profile_pic_disk' => $disk,
                 'profile_pic_status' => 'completed',
                 'profile_pic_progress' => 100,
                 'profile_pic_downloaded_at' => now(),
                 'profile_pic_error' => null,
             ])->save();
+            
+            Log::info('Profile picture downloaded and stored', [
+                'profile_id' => $profile->id,
+                'username' => $profile->username,
+                'path' => $storagePath,
+                'disk' => $disk,
+            ]);
         } catch (Throwable $exception) {
             $profile->forceFill([
                 'profile_pic_status' => 'failed',
                 'profile_pic_progress' => 0,
                 'profile_pic_error' => $exception->getMessage(),
             ])->save();
+
+            Log::error('Profile picture download failed', [
+                'profile_id' => $profile->id,
+                'username' => $profile->username,
+                'error' => $exception->getMessage(),
+            ]);
 
             throw $exception;
         } finally {
@@ -131,5 +161,11 @@ class DownloadProfilePicture implements ShouldQueue
             'profile_pic_progress' => 0,
             'profile_pic_error' => $exception->getMessage(),
         ])->save();
+
+        Log::error('Profile picture job failed after retries', [
+            'profile_id' => $profile->id,
+            'username' => $profile->username,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }
