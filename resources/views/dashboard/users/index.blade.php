@@ -47,7 +47,7 @@
 
             <!-- === SEARCH BAR === -->
             <div class="max-w-md mx-auto mb-12 fade-in-up" style="animation-delay: 0.2s;">
-                <form method="GET" action="{{ route('users.index') }}" class="flex">
+                <form method="GET" action="{{ route('users.index') }}" class="flex" data-preload>
                     <input type="hidden" name="page" value="1">
                     <input type="text" 
                            name="q" 
@@ -65,7 +65,8 @@
                 <!-- === 2x4 GRID - 8 USERS === -->
                 <div class="user-grid fade-in-up" style="animation-delay: 0.4s;">
                     @foreach($users as $user)
-                        <a href="{{ route('users.show', $user->pid) }}" 
+                        <a href="{{ route('users.show', $user->pid) }}"
+                           data-preload-click
                            class="user-card group bg-white rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-200">
                             
                             <!-- Profile Image -->
@@ -100,7 +101,7 @@
                             @if($users->onFirstPage())
                                 <li><span class="px-4 py-2 text-gray-400 rounded-full">⬅</span></li>
                             @else
-                                <li><a href="{{ $users->previousPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50">⬅</a></li>
+                                <li><a href="{{ $users->previousPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>⬅</a></li>
                             @endif
 
                             <!-- 7 Page Numbers -->
@@ -108,13 +109,13 @@
                                 @if($i == $users->currentPage())
                                     <li><span class="px-3 py-2 bg-blue-600 text-white rounded-full font-bold w-8 text-center">{{ $i }}</span></li>
                                 @else
-                                    <li><a href="{{ $users->url($i) }}" class="px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-full w-8 text-center">{{ $i }}</a></li>
+                                    <li><a href="{{ $users->url($i) }}" class="px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-full w-8 text-center" data-preload-click>{{ $i }}</a></li>
                                 @endif
                             @endfor
 
                             <!-- Next -->
                             @if($users->hasMorePages())
-                                <li><a href="{{ $users->nextPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50">➡</a></li>
+                                <li><a href="{{ $users->nextPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>➡</a></li>
                             @else
                                 <li><span class="px-4 py-2 text-gray-400 rounded-full">➡</span></li>
                             @endif

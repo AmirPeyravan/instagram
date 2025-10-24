@@ -16,9 +16,24 @@
 
         <!-- Styles -->
         @livewireStyles
+        <style>
+            [x-cloak] { display: none !important; }
+        </style>
     </head>
-    <body class="font-sans antialiased">
+    <body
+        x-data="{
+            loading: false,
+            showLoader() { this.loading = true },
+            hideLoader() { this.loading = false }
+        }"
+        x-on:page-loading-start.window="showLoader()"
+        x-on:page-loading-stop.window="hideLoader()"
+        x-on:beforeunload.window="showLoader()"
+        x-bind:class="{ 'overflow-hidden': loading }"
+        class="font-sans antialiased"
+    >
         <x-banner />
+        <x-preloader />
 
         <div class="min-h-screen bg-gray-100">
             @livewire('navigation-menu')
@@ -41,5 +56,37 @@
         @stack('modals')
 
         @livewireScripts
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const startLoading = () => window.dispatchEvent(new CustomEvent('page-loading-start'));
+                const stopLoading = () => window.dispatchEvent(new CustomEvent('page-loading-stop'));
+
+                window.addEventListener('load', stopLoading);
+
+                document.body.addEventListener('submit', (event) => {
+                    if (event.target?.closest('form[data-preload]')) {
+                        startLoading();
+                    }
+                }, true);
+
+                document.body.addEventListener('click', (event) => {
+                    const actionable = event.target.closest('[data-preload-click]');
+                    if (!actionable) {
+                        return;
+                    }
+
+                    if (actionable.tagName === 'A' && actionable.getAttribute('target') === '_blank') {
+                        return;
+                    }
+
+                    startLoading();
+                });
+
+                if (window.Livewire) {
+                    window.Livewire.hook('message.sent', startLoading);
+                    window.Livewire.hook('message.processed', stopLoading);
+                }
+            });
+        </script>
     </body>
 </html>

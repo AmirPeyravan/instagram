@@ -82,7 +82,7 @@
                 <div class="px-4 py-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <a href="{{ route('users.index') }}" class="p-2 hover:bg-[#efefef] rounded-full mr-4">
+                            <a href="{{ route('users.index') }}" class="p-2 hover:bg-[#efefef] rounded-full mr-4" data-preload-click>
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>

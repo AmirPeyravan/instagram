@@ -55,7 +55,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="{{ route('dashboard.submit.store') }}">
+            <form method="POST" action="{{ route('dashboard.submit.store') }}" data-preload>
                 @csrf
                 <div class="form-group">
                     <label for="username" class="block mb-2 font-semibold">نام کاربری اینستاگرام</label>
