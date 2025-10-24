@@ -39,9 +39,9 @@
             <div class="text-center mb-12 fade-in-up">
                 <h1 class="text-5xl font-black text-gray-800 mb-2">جستجوی کاربران</h1>
                 <p class="text-xl text-gray-600">
-                    صفحه {{ $users->currentPage() }} از {{ $users->lastPage() }} • 
-                    {{ $users->total() }} کاربر • 
-                    {{ $users->count() }} کاربر در این صفحه
+                    صفحه {{ $profiles->currentPage() }} از {{ $profiles->lastPage() }} •
+                    {{ $profiles->total() }} کاربر •
+                    {{ $profiles->count() }} کاربر در این صفحه
                 </p>
             </div>
 
@@ -61,34 +61,40 @@
                 </form>
             </div>
 
-            @if($users->count())
+            @if($profiles->count())
                 <!-- === 2x4 GRID - 8 USERS === -->
                 <div class="user-grid fade-in-up" style="animation-delay: 0.4s;">
-                    @foreach($users as $user)
-                        <a href="{{ route('users.show', $user->pid) }}"
+                    @foreach($profiles as $profile)
+                        <a href="{{ route('users.show', $profile) }}"
                            data-preload-click
                            class="user-card group bg-white rounded-2xl p-6 text-center shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300 border border-gray-200">
-                            
+
                             <!-- Profile Image -->
                             <div class="relative mx-auto mb-4">
-                                <img src="{{ $user->profile_image }}" 
-                                     alt="{{ $user->username }}"
+                                <img src="{{ $profile->profile_image_url }}"
+                                     alt="{{ $profile->username }}"
                                      class="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md mx-auto">
                                 <div class="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
                                     <span class="text-white text-xs">●</span>
                                 </div>
                             </div>
-                            
+
                             <!-- Username -->
                             <h3 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">
-                                {{ $user->username }}
+                                {{ $profile->username }}
                             </h3>
-                            
+
                             <!-- Followers -->
                             <p class="text-sm text-gray-600 font-medium">
-                                {{ number_format($user->followers_count) }} 
+                                {{ number_format($profile->followers ?? 0) }}
                                 <span class="text-blue-600">دنبال‌کننده</span>
                             </p>
+
+                            @if(!in_array($profile->profile_pic_status, ['completed', 'skipped']))
+                                <p class="mt-3 text-xs text-amber-600 font-semibold">
+                                    وضعیت تصویر: {{ $profile->profile_pic_status }} ({{ $profile->profile_pic_progress }}٪)
+                                </p>
+                            @endif
                         </a>
                     @endforeach
                 </div>
@@ -98,24 +104,24 @@
                     <nav class="bg-white rounded-full p-2 shadow-lg">
                         <ul class="flex items-center gap-1">
                             <!-- Previous -->
-                            @if($users->onFirstPage())
+                            @if($profiles->onFirstPage())
                                 <li><span class="px-4 py-2 text-gray-400 rounded-full">⬅</span></li>
                             @else
-                                <li><a href="{{ $users->previousPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>⬅</a></li>
+                                <li><a href="{{ $profiles->previousPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>⬅</a></li>
                             @endif
 
                             <!-- 7 Page Numbers -->
-                            @for($i = 1; $i <= $users->lastPage(); $i++)
-                                @if($i == $users->currentPage())
+                            @for($i = 1; $i <= $profiles->lastPage(); $i++)
+                                @if($i == $profiles->currentPage())
                                     <li><span class="px-3 py-2 bg-blue-600 text-white rounded-full font-bold w-8 text-center">{{ $i }}</span></li>
                                 @else
-                                    <li><a href="{{ $users->url($i) }}" class="px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-full w-8 text-center" data-preload-click>{{ $i }}</a></li>
+                                    <li><a href="{{ $profiles->url($i) }}" class="px-3 py-2 text-gray-700 hover:bg-blue-50 rounded-full w-8 text-center" data-preload-click>{{ $i }}</a></li>
                                 @endif
                             @endfor
 
                             <!-- Next -->
-                            @if($users->hasMorePages())
-                                <li><a href="{{ $users->nextPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>➡</a></li>
+                            @if($profiles->hasMorePages())
+                                <li><a href="{{ $profiles->nextPageUrl() }}" class="px-4 py-2 text-blue-600 font-bold rounded-full hover:bg-blue-50" data-preload-click>➡</a></li>
                             @else
                                 <li><span class="px-4 py-2 text-gray-400 rounded-full">➡</span></li>
                             @endif

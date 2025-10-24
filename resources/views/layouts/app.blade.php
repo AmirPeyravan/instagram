@@ -23,12 +23,33 @@
     <body
         x-data="{
             loading: false,
-            showLoader() { this.loading = true },
-            hideLoader() { this.loading = false }
+            progressVisible: false,
+            progressValue: 0,
+            progressStatus: '',
+            progressMessage: '',
+            showLoader() { this.loading = true; this.progressVisible = false },
+            hideLoader() { this.loading = false },
+            updateProgress(detail) {
+                if (!detail) {
+                    return;
+                }
+
+                this.progressValue = detail.progress ?? 0;
+                this.progressStatus = detail.label ?? detail.status ?? '';
+                this.progressMessage = detail.message ?? detail.label ?? '';
+                this.progressVisible = Boolean(detail.active);
+
+                if (!detail.active) {
+                    setTimeout(() => {
+                        this.progressVisible = false;
+                    }, 800);
+                }
+            }
         }"
         x-on:page-loading-start.window="showLoader()"
         x-on:page-loading-stop.window="hideLoader()"
         x-on:beforeunload.window="showLoader()"
+        x-on:dashboard-progress.window="updateProgress($event.detail)"
         x-bind:class="{ 'overflow-hidden': loading }"
         class="font-sans antialiased"
     >
@@ -88,5 +109,6 @@
                 }
             });
         </script>
+        @stack('scripts')
     </body>
 </html>

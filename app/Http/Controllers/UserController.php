@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InstagramProfile;
 use Illuminate\Http\Request;
-use App\Models\InstagramUser;
 
 class UserController extends Controller
 {
@@ -12,22 +12,23 @@ class UserController extends Controller
     {
         $search = $request->input('q');
 
-        $users = InstagramUser::query();
+        $profiles = InstagramProfile::query()
+            ->when($search, fn ($query) => $query->where('username', 'like', "%{$search}%"))
+            ->orderByDesc('updated_at')
+            ->paginate(8)
+            ->withQueryString();
 
-        if ($search) {
-            $users = $users->where('username', 'like', "%{$search}%");
-        }
-
-        $users = $users->orderBy('id', 'asc')->paginate(8);
-
-        return view('dashboard.users.index', compact('users', 'search'));
+        return view('dashboard.users.index', [
+            'profiles' => $profiles,
+            'search' => $search,
+        ]);
     }
 
     // نمایش جزئیات کاربر
-    public function show($pid)
+    public function show(InstagramProfile $profile)
     {
-        $user = InstagramUser::where('pid', $pid)->firstOrFail();
-
-        return view('dashboard.users.show', compact('user'));
+        return view('dashboard.users.show', [
+            'profile' => $profile,
+        ]);
     }
 }
