@@ -16,9 +16,45 @@
 
         <!-- Styles -->
         @livewireStyles
+        <style>
+            [x-cloak] { display: none !important; }
+        </style>
     </head>
-    <body class="font-sans antialiased">
+    <body
+        x-data="{
+            loading: false,
+            progressVisible: false,
+            progressValue: 0,
+            progressStatus: '',
+            progressMessage: '',
+            showLoader() { this.loading = true; this.progressVisible = false },
+            hideLoader() { this.loading = false },
+            updateProgress(detail) {
+                if (!detail) {
+                    return;
+                }
+
+                this.progressValue = detail.progress ?? 0;
+                this.progressStatus = detail.label ?? detail.status ?? '';
+                this.progressMessage = detail.message ?? detail.label ?? '';
+                this.progressVisible = Boolean(detail.active);
+
+                if (!detail.active) {
+                    setTimeout(() => {
+                        this.progressVisible = false;
+                    }, 800);
+                }
+            }
+        }"
+        x-on:page-loading-start.window="showLoader()"
+        x-on:page-loading-stop.window="hideLoader()"
+        x-on:beforeunload.window="showLoader()"
+        x-on:dashboard-progress.window="updateProgress($event.detail)"
+        x-bind:class="{ 'overflow-hidden': loading }"
+        class="font-sans antialiased"
+    >
         <x-banner />
+        <x-preloader />
 
         <div class="min-h-screen bg-gray-100">
             @livewire('navigation-menu')
@@ -41,5 +77,38 @@
         @stack('modals')
 
         @livewireScripts
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const startLoading = () => window.dispatchEvent(new CustomEvent('page-loading-start'));
+                const stopLoading = () => window.dispatchEvent(new CustomEvent('page-loading-stop'));
+
+                window.addEventListener('load', stopLoading);
+
+                document.body.addEventListener('submit', (event) => {
+                    if (event.target?.closest('form[data-preload]')) {
+                        startLoading();
+                    }
+                }, true);
+
+                document.body.addEventListener('click', (event) => {
+                    const actionable = event.target.closest('[data-preload-click]');
+                    if (!actionable) {
+                        return;
+                    }
+
+                    if (actionable.tagName === 'A' && actionable.getAttribute('target') === '_blank') {
+                        return;
+                    }
+
+                    startLoading();
+                });
+
+                if (window.Livewire) {
+                    window.Livewire.hook('message.sent', startLoading);
+                    window.Livewire.hook('message.processed', stopLoading);
+                }
+            });
+        </script>
+        @stack('scripts')
     </body>
 </html>

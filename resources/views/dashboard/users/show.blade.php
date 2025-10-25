@@ -82,12 +82,12 @@
                 <div class="px-4 py-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <a href="{{ route('users.index') }}" class="p-2 hover:bg-[#efefef] rounded-full mr-4">
+                            <a href="{{ route('users.index') }}" class="p-2 hover:bg-[#efefef] rounded-full mr-4" data-preload-click>
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                                 </svg>
                             </a>
-                            <h2 class="text-base font-semibold">{{ $user->username }}</h2>
+                            <h2 class="text-base font-semibold">{{ $profile->username }}</h2>
                         </div>
                         <button class="p-2 hover:bg-[#efefef] rounded-full">
                             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,30 +106,49 @@
                     <div class="flex items-center justify-between">
                         <!-- Profile Picture + Username + Follow -->
                         <div class="flex items-center">
-                            <img src="{{ $user->profile_image }}" 
-                                 alt="{{ $user->username }}"
+                            <img src="{{ $profile->profile_image_url }}"
+                                 alt="{{ $profile->username }}"
                                  class="profile-pic mr-4">
-                            
+
                             <div>
                                 <div class="flex items-center mb-3">
-                                    <h1 class="text-xl font-semibold mr-4">{{ $user->username }}</h1>
+                                    <h1 class="text-xl font-semibold mr-4">{{ $profile->username }}</h1>
                                     <button class="btn-follow">دنبال کردن</button>
                                 </div>
-                                
+
                                 <!-- Stats -->
                                 <div class="flex items-center stats">
                                     <div class="text-center">
-                                        <div class="stat-number">{{ number_format($user->post_count) }}</div>
+                                        <div class="stat-number">{{ number_format($profile->posts ?? 0) }}</div>
                                         <div class="stat-label">پست‌ها</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="stat-number">{{ number_format($user->followers_count) }}</div>
+                                        <div class="stat-number">{{ number_format($profile->followers ?? 0) }}</div>
                                         <div class="stat-label">دنبال‌کننده</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="stat-number">{{ number_format($user->following_count) }}</div>
+                                        <div class="stat-number">{{ number_format($profile->following ?? 0) }}</div>
                                         <div class="stat-label">دنبال‌کردن</div>
                                     </div>
+                                </div>
+
+                                @if($profile->bio)
+                                    <p class="mt-4 text-sm text-gray-700 leading-relaxed max-w-xl">{{ $profile->bio }}</p>
+                                @endif
+
+                                <div class="mt-4 text-xs text-gray-500 space-y-1">
+                                    <div>وضعیت حساب: {{ $profile->exists ? 'فعال' : 'نامشخص' }}</div>
+                                    <div>خصوصی: {{ $profile->is_private ? 'بله' : 'خیر' }} • تایید شده: {{ $profile->is_verified ? 'بله' : 'خیر' }}</div>
+                                    <div>استوری فعال: {{ $profile->has_stories ? 'بله' : 'خیر' }}</div>
+                                    <div>آخرین بروزرسانی: {{ optional($profile->updated_at)->format('Y-m-d H:i') }}</div>
+                                    @if($profile->profile_pic_downloaded_at)
+                                        <div>دانلود تصویر: {{ optional($profile->profile_pic_downloaded_at)->format('Y-m-d H:i') }}</div>
+                                    @endif
+                                    @if($profile->profile_pic_status !== 'completed')
+                                        <div class="text-amber-600 font-semibold">
+                                            تصویر پروفایل: {{ $profile->profile_pic_status }} ({{ $profile->profile_pic_progress }}٪)
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
